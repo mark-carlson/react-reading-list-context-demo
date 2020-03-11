@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import DeleteBtn from "../components/DeleteBtn";
 import Jumbotron from "../components/Jumbotron";
+import {LikeButton} from '../components/LikeButton';
 import API from "../utils/API";
 import { Link } from "react-router-dom";
 import { Col, Row, Container } from "../components/Grid";
@@ -27,12 +28,18 @@ export const Books = () => {
   };
 
   useEffect(() => {
+    if (books.length === 0) {
     loadBooks();
+    }
   }, []);
 
   const deleteBook = id => {
     API.deleteBook(id)
-      .then(res => loadBooks())
+      .then(res => {
+        const remainingBooks = books.filter(book => book._id !== id);
+        setBooks(remainingBooks);
+        //loadBooks()
+      })
       .catch(err => console.log(err));
   };
 
@@ -48,15 +55,30 @@ export const Books = () => {
     event.preventDefault();
     const { author, synopsis, title } = bookForm; 
     if (title && author) {
-      API.saveBook({
+      const newBook = {
         title,
         author,
         synopsis,
-      })
-        .then(res => loadBooks())
+        likes: 0
+      }
+      API.saveBook(newBook)
+        .then(res => {
+          newBook._id = res.data._id;
+          setBooks([
+            newBook,
+            ...books
+          ])
+        })
         .catch(err => console.log(err));
     }
   };
+
+  const incrementLikes = id => {
+    const indexToUpdate = books.findIndex(book => book._id === id);
+    const newBooks = [...books];
+    newBooks[indexToUpdate].likes = newBooks[indexToUpdate].likes ? newBooks[indexToUpdate].likes + 1 : 1;
+    setBooks(newBooks);
+  }
 
   return (
     <Container fluid>
@@ -100,6 +122,7 @@ export const Books = () => {
             <List>
               {books.map(book => (
                 <ListItem key={book._id}>
+                  <LikeButton id={book._id} incrementLikes={incrementLikes} likes={book.likes || 0} />
                   <Link to={"/books/" + book._id}>
                     <strong>
                       {book.title} by {book.author}
